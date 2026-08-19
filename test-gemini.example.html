@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Gemini Client Test</title>
+<style>
+body { font-family: sans-serif; padding: 20px; background: #1a1a1a; color: #fff; }
+#log { white-space: pre-wrap; background: #000; padding: 15px; border-radius: 8px; margin-top: 15px; font-size: 13px; }
+.ok { color: #4caf50; }
+.err { color: #f44336; }
+</style>
+</head>
+<body>
+<h2>Test: Gemini Client-Side API</h2>
+<div id="log"></div>
+<script>
+var log = document.getElementById('log');
+function addLog(msg, cls) {
+  log.innerHTML += '<span class="' + (cls || '') + '">' + msg + '</span>\n';
+}
+
+addLog('=== Starting test ===\n');
+
+// INSTRUCTIONS: Replace YOUR_GEMINI_API_KEY with your actual key
+var GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY';
+var GEMINI_MODEL = 'gemini-3.5-flash-lite';
+var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + GEMINI_API_KEY;
+
+addLog('URL: ' + GEMINI_URL.substring(0, 80) + '...');
+addLog('Sending request...');
+
+var payload = {
+  contents: [{ role: 'user', parts: [{ text: 'Apa itu Tugu Marmer di Lawang Sewu? Jawab 2 kalimat.' }] }],
+  generationConfig: { temperature: 0.3, maxOutputTokens: 200 }
+};
+
+fetch(GEMINI_URL, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload)
+})
+.then(function(response) {
+  addLog('HTTP Status: ' + response.status, response.ok ? 'ok' : 'err');
+  if (!response.ok) throw new Error('HTTP ' + response.status);
+  return response.json();
+})
+.then(function(data) {
+  var text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || 'NO TEXT';
+  addLog('\n=== SUCCESS ===', 'ok');
+  addLog('Reply: ' + text, 'ok');
+})
+.catch(function(err) {
+  addLog('\n=== FAILED ===', 'err');
+  addLog('Error: ' + err.message, 'err');
+});
+</script>
+</body>
+</html>

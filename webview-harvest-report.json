@@ -1,0 +1,73 @@
+{
+    "generatedAt": "2026-08-16T15:39:52+00:00",
+    "dryRun": false,
+    "noFetch": true,
+    "source": {
+        "skin": "C:\\xampp\\htdocs\\pano\\output\\lampung-official\\lawang sewu\\tools/../skin.js",
+        "tourData": "C:\\xampp\\htdocs\\pano\\output\\lampung-official\\lawang sewu\\tools/../tour-data.js"
+    },
+    "inventory": {
+        "totalIframes": 15,
+        "byClass": {
+            "CONTENT": 14,
+            "IGNORE": 1
+        },
+        "uniqueObjinfoIds": 13,
+        "objinfoIds": [
+            631,
+            632,
+            977,
+            978,
+            991,
+            992,
+            993,
+            994,
+            995,
+            1198,
+            1199,
+            1200,
+            1201
+        ],
+        "uniqueLanguages": [
+            "id"
+        ],
+        "vbStatesMapped": 13
+    },
+    "fetch": {
+        "attempted": 52,
+        "ok": 52,
+        "failed": []
+    },
+    "entities": {
+        "built": 13,
+        "inlineSkin": 3,
+        "sceneMapping": {
+            "LIKELY": 5,
+            "EXACT": 6,
+            "UNMAPPED": 2
+        }
+    },
+    "contamination": {
+        "checked": true,
+        "terms": [
+            "bakauheni",
+            "pelabuhan bakauheni",
+            "menara siger"
+        ],
+        "violations": []
+    },
+    "elapsedSeconds": 0.03,
+    "embeddings": {
+        "mode": "lexical-fallback",
+        "vectors": 0,
+        "cache": "C:\\xampp\\htdocs\\pano\\output\\lampung-official\\lawang sewu\\tools/../api/cache/ai/knowledge-embeddings.json"
+    },
+    "written": {
+        "knowledge": "C:\\xampp\\htdocs\\pano\\output\\lampung-official\\lawang sewu\\tools/../knowledge.json",
+        "knowledgeSpec": "C:\\xampp\\htdocs\\pano\\output\\lampung-official\\lawang sewu\\tools/../api/knowledge.json",
+        "webviewMap": "C:\\xampp\\htdocs\\pano\\output\\lampung-official\\lawang sewu\\tools/../api/cache/ai/webview-map.json",
+        "report": "C:\\xampp\\htdocs\\pano\\output\\lampung-official\\lawang sewu\\tools/../webview-harvest-report.json",
+        "entriesTotal": 16,
+        "manualPreserved": 0
+    }
+}

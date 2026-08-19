@@ -1,0 +1,172 @@
+{
+  "version": "1.0",
+  "tourId": "lawang-sewu",
+  "generatedAt": "2026-08-17",
+  "notes": "Central registry of visitor-facing places. Maps placeId to name, sceneIds, aliases, and variant groups. Used by PHP/JS resolvers to collapse scenes by place.",
+  "places": {
+    "main-area": {
+      "name": "Area Utama Lawang Sewu",
+      "sceneIds": ["node51", "node50"],
+      "aliases": ["area utama", "halaman utama", "main area"],
+      "variantGroup": {
+        "day": "node51",
+        "night": "node50"
+      }
+    },
+    "balkon": {
+      "name": "Balkon",
+      "sceneIds": ["node53", "node52", "node55", "node54"],
+      "aliases": ["balkon koridor"],
+      "variantGroup": {
+        "day": "node53",
+        "night": "node52"
+      }
+    },
+    "hall": {
+      "name": "Aula Lawang Sewu",
+      "sceneIds": ["node61", "node62"],
+      "aliases": ["hall siang", "hall malam"],
+      "variantGroup": {
+        "day": "node61",
+        "night": "node62"
+      }
+    },
+    "monumen-kereta": {
+      "name": "Monumen Kereta Api",
+      "sceneIds": ["node64", "node63"],
+      "aliases": ["kereta siang", "kereta malam", "tugu", "monumen kereta api", "lokomotif"],
+      "variantGroup": {
+        "day": "node64",
+        "night": "node63"
+      }
+    },
+    "galeri-museum-kereta": {
+      "name": "Galeri Museum Kereta Api",
+      "sceneIds": ["node71", "node72", "node73"],
+      "aliases": ["galeri museum kereta api"]
+    },
+    "sapi": {
+      "name": "Area Patung",
+      "sceneIds": ["node39"],
+      "aliases": ["patung", "sculpture"]
+    },
+    "ruang-pameran-sejarah": {
+      "name": "Ruang Pameran Sejarah",
+      "sceneIds": ["node40"],
+      "aliases": ["ruang pameran sejarah"]
+    },
+    "galeri-warisan": {
+      "name": "Galeri Warisan",
+      "sceneIds": ["node41"],
+      "aliases": ["galeri warisan"]
+    },
+    "maket": {
+      "name": "Maket",
+      "sceneIds": ["node42"],
+      "aliases": ["maket", "maket proyek"]
+    },
+    "gedung-d": {
+      "name": "Gedung D",
+      "sceneIds": ["node45"],
+      "aliases": ["gedung d"]
+    },
+    "gedung-e": {
+      "name": "Gedung E",
+      "sceneIds": ["node67"],
+      "aliases": ["gedung e"]
+    },
+    "gedung-c": {
+      "name": "Gedung C",
+      "sceneIds": [],
+      "aliases": ["gedung c"],
+      "note": "mentioned in knowledge as Ruang Informasi Pemugaran"
+    },
+    "gedung-b": {
+      "name": "Gedung B",
+      "sceneIds": [],
+      "aliases": ["gedung b"],
+      "note": "mentioned in knowledge for underground cooling system"
+    },
+    "gedung-a": {
+      "name": "Gedung A",
+      "sceneIds": [],
+      "aliases": ["gedung a"],
+      "note": "mentioned in knowledge; accessible from node58, node61, node62, node57"
+    },
+    "pintu-masuk": {
+      "name": "Pintu Masuk",
+      "sceneIds": ["node57"],
+      "aliases": ["pintu masuk"]
+    },
+    "pintu-keluar-utama": {
+      "name": "Pintu Keluar Utama",
+      "sceneIds": ["node68"],
+      "aliases": ["pintu keluar"]
+    },
+    "koridor-gedung-a": {
+      "name": "Koridor Gedung A",
+      "sceneIds": ["node58"],
+      "aliases": ["koridor gedung a"]
+    },
+    "ruang-pameran": {
+      "name": "Ruang Pameran",
+      "sceneIds": ["node59"],
+      "aliases": ["ruang pameran"]
+    },
+    "foodcourt": {
+      "name": "Foodcourt",
+      "sceneIds": ["node56"],
+      "aliases": ["foodcourt", "food court"]
+    },
+    "koridor-umkm": {
+      "name": "Koridor UMKM",
+      "sceneIds": ["node69"],
+      "aliases": ["koridor umkm", "umkm"]
+    },
+    "koridor-galeri": {
+      "name": "Koridor Galeri",
+      "sceneIds": ["node70"],
+      "aliases": ["koridor galeri"]
+    },
+    "balkon-koridor": {
+      "name": "Balkon Koridor",
+      "sceneIds": ["node43"],
+      "aliases": ["balkon koridor"]
+    },
+    "struktur-atap": {
+      "name": "Struktur Atap Arsitektur",
+      "sceneIds": ["node48"],
+      "aliases": ["struktur atap"]
+    },
+    "cetak-biru": {
+      "name": "Cetak Biru Lawang Sewu",
+      "sceneIds": ["node44"],
+      "aliases": ["cetak biru", "blue print"]
+    },
+    "bekas-tembakan": {
+      "name": "Bekas Tembakan",
+      "sceneIds": ["node47"],
+      "aliases": ["bekas tembakan", "traces of gunfire"]
+    },
+    "lokomotif-listrik": {
+      "name": "Lokomotif Listrik ESS",
+      "sceneIds": ["node60"],
+      "aliases": ["lokomotif listrik", "kereta listrik", "ess electric locomotive"]
+    },
+    "lorong": {
+      "name": "Lorong Gedung",
+      "sceneIds": ["node65", "node66"],
+      "aliases": ["lorong"]
+    },
+    "toko-souvenir": {
+      "name": "Toko Souvenir",
+      "sceneIds": ["node49"],
+      "aliases": ["toko souvenir", "souvenir shop"]
+    },
+    "koridor-node46": {
+      "name": "Koridor",
+      "sceneIds": ["node46"],
+      "aliases": ["koridor"]
+    }
+  }
+}

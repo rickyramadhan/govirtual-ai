@@ -1,0 +1,33 @@
+# Lawang Sewu Virtual Tour - API Configuration
+# Allow POST requests to API endpoints
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+</IfModule>
+
+# Allow POST to PHP files in api/ directory
+<IfModule mod_rewrite.c>
+    RewriteRule ^api/ - [L]
+</IfModule>
+
+# Explicitly allow POST method
+<LimitExcept GET HEAD OPTIONS>
+    Allow from all
+</LimitExcept>
+
+# PHP settings for API
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 12M
+    php_value max_execution_time 30
+</IfModule>
+
+# CORS headers for API
+<IfModule mod_headers.c>
+    <FilesMatch "\.php$">
+        Header set Access-Control-Allow-Origin "*"
+        Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+    </FilesMatch>
+</IfModule>

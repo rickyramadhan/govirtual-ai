@@ -1,0 +1,67 @@
+# ========================================
+# Pano2VR Player, Media & Export Data (LARGE - exclude)
+# ========================================
+media/
+tiles/
+videos/
+images/
+audio/
+3rdparty/
+pano2vr_player.js
+skin.js
+pano.xml
+gyro.js
+background_music_off.js
+preview.jpg
+custom.css
+NimbusRomNo9L-Reg.woff
+NimbusRomNo9L-Reg.woff2
+# Pano2VR export data (not AI features)
+gginfo.json
+scene-identity (2).json
+pano2vr_skin.cfg
+pano2vr_output.log
+
+# Local config (not for sharing)
+.commandcode/
+
+# Files with hardcoded API keys (keep local only)
+ai-client.js
+api/config.php
+test-gemini.html
+tests/debug-gemini.php
+
+# ========================================
+# Archives & Backups
+# ========================================
+*.zip
+*.rar
+*.7z
+*.bak
+*.backup
+*.old
+
+# ========================================
+# Environment & Secrets
+# ========================================
+.env
+
+# ========================================
+# Cache & Temp
+# ========================================
+api/cache/
+*.cache
+*.tmp
+*.log
+
+# ========================================
+# OS & Editor
+# ========================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
