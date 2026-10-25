@@ -27,9 +27,9 @@ pano2vr_output.log
 
 # Files with hardcoded API keys (keep local only)
 ai-client.js
-api/config.php
 test-gemini.html
-tests/debug-gemini.php
+govirtual-ai/api/config.php
+govirtual-ai/tests/debug-gemini.php
 
 # ========================================
 # Archives & Backups
@@ -45,11 +45,13 @@ tests/debug-gemini.php
 # Environment & Secrets
 # ========================================
 .env
+govirtual-ai/.env
 
 # ========================================
 # Cache & Temp
 # ========================================
-api/cache/
+govirtual-ai/api/cache/
+govirtual-ai/cache/
 *.cache
 *.tmp
 *.log

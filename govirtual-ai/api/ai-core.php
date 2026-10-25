@@ -2,6 +2,26 @@
 
 declare(strict_types=1);
 
+/* PHP 7.x compatibility polyfills for PHP 8 string functions */
+if (!function_exists('str_contains')) {
+    function str_contains(string $haystack, string $needle): bool
+    {
+        return $needle === '' || strpos($haystack, $needle) !== false;
+    }
+}
+if (!function_exists('str_starts_with')) {
+    function str_starts_with(string $haystack, string $needle): bool
+    {
+        return strncmp($haystack, $needle, strlen($needle)) === 0;
+    }
+}
+if (!function_exists('str_ends_with')) {
+    function str_ends_with(string $haystack, string $needle): bool
+    {
+        return $needle === '' || substr($haystack, -strlen($needle)) === $needle;
+    }
+}
+
 require_once __DIR__ . '/guide-policy.php';
 
 /* ================================================================
@@ -353,7 +373,7 @@ function ai_normalize(string $value): string
 function ai_tokens(string $value): array
 {
     static $stop = ['yang', 'dan', 'atau', 'dari', 'untuk', 'saya', 'anda', 'ada', 'apa', 'ini', 'itu', 'ke', 'di', 'the', 'and', 'for', 'what', 'where'];
-    return array_values(array_unique(array_filter(explode(' ', ai_normalize($value)), static fn(string $v): bool => strlen($v) >= 2 && !in_array($v, $stop, true))));
+    return array_values(array_unique(array_filter(explode(' ', ai_normalize($value)), static function (string $v) use ($stop): bool { return strlen($v) >= 2 && !in_array($v, $stop, true); })));
 }
 
 function ai_similarity(string $a, string $b): float
@@ -392,7 +412,7 @@ function ai_canonical_tour(array $raw): array
     }
     $routes = [];
     foreach (array_slice((array)($raw['routes'] ?? []), 0, 30) as $route) {
-        $ids = array_values(array_filter((array)($route['scenes'] ?? []), static fn($id): bool => isset($sceneIds[(string)$id])));
+        $ids = array_values(array_filter((array)($route['scenes'] ?? []), static function ($id) use ($sceneIds): bool { return isset($sceneIds[(string)$id]); }));
         if (!$ids) continue;
         $routes[] = ['id' => preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($route['id'] ?? '')), 'name' => mb_substr((string)($route['name'] ?? ''), 0, 100), 'aliases' => array_slice((array)($route['aliases'] ?? []), 0, 20), 'scenes' => $ids];
     }
@@ -435,7 +455,7 @@ function ai_load_knowledge(): array
 {
     static $cache;
     if ($cache !== null) return $cache;
-    $file = dirname(__DIR__) . '/knowledge.json';
+    $file = dirname(__DIR__) . '/data/knowledge.json';
     $raw = json_decode((string)@file_get_contents($file), true);
     $entries = (array)($raw['entries'] ?? []);
     if (empty($entries)) error_log('[tour-ai] knowledge.json EMPTY or NOT FOUND at: ' . $file);
@@ -503,7 +523,7 @@ function ai_retrieve(string $query, array $session, array $tour, array $config, 
         $score = ($vectors ? 0.40 : 0.0) * $semantic + 0.25 * $entity + ($vectors ? 0.15 : 0.55) * $lexical + 0.08 * $sceneScore + 0.07 * $visitor + 0.05 * ($entry['routeIds'] ? 1 : 0);
         if ($score >= 0.12) $scored[] = ['entry' => $entry, 'score' => round(min(1, $score), 4)];
     }
-    usort($scored, static fn(array $a, array $b): int => $b['score'] <=> $a['score']);
+    usort($scored, static function (array $a, array $b): int { return $b['score'] <=> $a['score']; });
     $seen = []; $result = [];
     foreach ($scored as $item) { $key = ai_normalize($item['entry']['title']); if (isset($seen[$key])) continue; $seen[$key] = true; $result[] = $item; if (count($result) >= $limit) break; }
     return ['items' => $result, 'mode' => $vectors ? 'hybrid' : 'lexical-fallback'];
@@ -512,9 +532,50 @@ function ai_retrieve(string $query, array $session, array $tour, array $config, 
 function ai_parse_json(string $content): ?array
 {
     $content = trim($content);
+    // Strip markdown code fences if present.
     $content = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', $content) ?? $content;
+    $content = trim($content);
+    // Fast path: the whole content is already valid JSON.
     $decoded = json_decode($content, true);
+    if (is_array($decoded)) return $decoded;
+    // Tolerant path: extract the first balanced JSON object or array from
+    // prose (Gemini sometimes prepends/explanatory text around the JSON).
+    $decoded = ai_extract_first_json($content);
     return is_array($decoded) ? $decoded : null;
+}
+
+function ai_extract_first_json(string $content): ?array
+{
+    $openers = ['{' => '}', '[' => ']'];
+    foreach ($openers as $open => $close) {
+        $start = strpos($content, $open);
+        if ($start === false) continue;
+        $depth = 0;
+        $inString = false;
+        $escaped = false;
+        $len = strlen($content);
+        for ($i = $start; $i < $len; $i++) {
+            $c = $content[$i];
+            if ($inString) {
+                if ($escaped) { $escaped = false; }
+                elseif ($c === '\\') { $escaped = true; }
+                elseif ($c === '"') { $inString = false; }
+                continue;
+            }
+            if ($c === '"') { $inString = true; }
+            elseif ($c === $open) { $depth++; }
+            elseif ($c === $close) {
+                $depth--;
+                if ($depth === 0) {
+                    $candidate = substr($content, $start, $i - $start + 1);
+                    $decoded = json_decode($candidate, true);
+                    if (is_array($decoded)) return $decoded;
+                    break;
+                }
+            }
+        }
+    }
+    return null;
 }
 
 function ai_validate_profile(array $updates): array
@@ -530,11 +591,51 @@ function ai_validate_profile(array $updates): array
     return $result;
 }
 
+/**
+ * Validate provider-provided location recommendations (e.g. hotels, places of
+ * worship). Each must have a name and a numeric lat/lng so the frontend can
+ * render a Google Maps link. Max 8 items, safe for JSON.
+ */
+function ai_validate_recommendations(array $recs): array
+{
+    $out = [];
+    foreach (array_slice($recs, 0, 8) as $r) {
+        if (!is_array($r)) continue;
+        $name = trim((string)($r['name'] ?? ''));
+        if ($name === '') continue;
+        $lat = filter_var($r['lat'] ?? null, FILTER_VALIDATE_FLOAT);
+        $lng = filter_var($r['lng'] ?? null, FILTER_VALIDATE_FLOAT);
+        if ($lat === false || $lng === false) continue;
+        if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) continue;
+        $out[] = [
+            'name' => mb_substr($name, 0, 120),
+            'type' => mb_substr((string)($r['type'] ?? ''), 0, 60),
+            'lat' => round($lat, 6),
+            'lng' => round($lng, 6),
+            'note' => mb_substr((string)($r['note'] ?? ''), 0, 200),
+        ];
+    }
+    return $out;
+}
+
 function ai_validate_response(array $data, array $tour, array $retrieval): array
 {
+    // Normalize retrieval shape: accept both ['items'=>[ ['entry'=>..., 'score'=>...] ]] and
+    // a flat list of entry arrays (with 'relevance' as score).
+    $rawItems = is_array($retrieval['items'] ?? null) ? $retrieval['items'] : $retrieval;
+    $items = array_values(array_map(static function ($it): array {
+        if (is_array($it) && isset($it['entry']) && is_array($it['entry'])) {
+            $entry = $it['entry'];
+            $score = isset($it['score']) ? (float)$it['score'] : (isset($it['relevance']) ? (float)$it['relevance'] : 0.0);
+        } else {
+            $entry = is_array($it) ? $it : [];
+            $score = isset($it['relevance']) ? (float)$it['relevance'] : 0.0;
+        }
+        return ['entry' => $entry, 'score' => $score];
+    }, is_array($rawItems) ? $rawItems : []));
     $sceneIds = array_column($tour['scenes'], 'id');
     $routeMap = array_column($tour['routes'], null, 'id');
-    $retrievedIds = array_column(array_column($retrieval['items'], 'entry'), 'id');
+    $retrievedIds = array_column(array_column($items, 'entry'), 'id');
     $rawActions = is_array($data['actions'] ?? null) ? $data['actions'] : [];
     if (!$rawActions && isset($data['action'])) {
         $rawActions[] = ['type' => $data['action'], 'scene_id' => $data['scene'] ?? null, 'route_id' => $data['route'] ?? null, 'hotspot' => $data['hotspot'] ?? null, 'execution' => 'autoExecute'];
@@ -556,7 +657,7 @@ function ai_validate_response(array $data, array $tour, array $retrieval): array
         } elseif (in_array($type, ['focus_hotspot', 'show_hotspot_info'], true)) {
             $title = (string)($raw['hotspot'] ?? '');
             $scene = (string)($raw['scene_id'] ?? '');
-            $valid = array_filter($tour['hotspots'], static fn(array $h): bool => $h['title'] === $title && ($scene === '' || $h['scene'] === $scene));
+            $valid = array_filter($tour['hotspots'], static function (array $h) use ($title, $scene): bool { return $h['title'] === $title && ($scene === '' || $h['scene'] === $scene); });
             if (!$valid) continue;
             $action['hotspot'] = $title;
         } elseif ($type === 'set_language') {
@@ -567,15 +668,15 @@ function ai_validate_response(array $data, array $tour, array $retrieval): array
         $actions[] = $action;
     }
     $llmConfidence = max(0, min(1, (float)($data['confidence'] ?? 0)));
-    $evidence = (float)($retrieval['items'][0]['score'] ?? 0);
+    $evidence = (float)($items[0]['score'] ?? 0);
     if ($actions) $evidence = max($evidence, 0.75);
     $effective = round(0.55 * $llmConfidence + 0.45 * $evidence, 3);
     if ($effective < 0.48) {
-        $actions = array_values(array_filter($actions, static fn(array $a): bool => $a['execution'] !== 'autoExecute'));
+        $actions = array_values(array_filter($actions, static function (array $a): bool { return $a['execution'] !== 'autoExecute'; }));
     }
     $used = array_values(array_intersect(array_map('strval', (array)($data['used_source_ids'] ?? [])), $retrievedIds));
     $sources = [];
-    foreach ($retrieval['items'] as $item) {
+    foreach ($items as $item) {
         if (in_array($item['entry']['id'], $used, true)) {
             $sources[] = ['id' => $item['entry']['id'], 'title' => $item['entry']['title'], 'url' => $item['entry']['source'], 'relevance' => $item['score']];
         }
@@ -596,6 +697,7 @@ function ai_validate_response(array $data, array $tour, array $retrieval): array
         'actions' => $actions,
         'cards' => array_slice((array)($data['cards'] ?? []), 0, 4),
         'sources' => $sources,
+        'recommendations' => ai_validate_recommendations((array)($data['recommendations'] ?? [])),
         'action' => $primary['type'] ?? 'none',
         'scene' => $primary['scene_id'] ?? null,
         'hotspot' => $primary['hotspot'] ?? null,
@@ -704,7 +806,7 @@ function ai_load_place_map(): array
 {
     static $cache;
     if ($cache !== null) return $cache;
-    $raw = json_decode((string)@file_get_contents(dirname(__DIR__) . '/place-map.json'), true);
+    $raw = json_decode((string)@file_get_contents(dirname(__DIR__) . '/data/place-map.json'), true);
     $scenes = [];
     foreach ((array)($raw['scenes'] ?? []) as $scene) {
         $id = (string)($scene['sceneId'] ?? '');
@@ -738,7 +840,7 @@ function ai_load_place_registry(): array
 {
     static $cache;
     if ($cache !== null) return $cache;
-    $raw = json_decode((string)@file_get_contents(dirname(__DIR__) . '/place-registry.json'), true);
+    $raw = json_decode((string)@file_get_contents(dirname(__DIR__) . '/data/place-registry.json'), true);
     $places = [];
     foreach ((array)($raw['places'] ?? []) as $id => $place) {
         $places[(string)$id] = [
@@ -755,7 +857,7 @@ function ai_load_scene_identity(): array
 {
     static $cache;
     if ($cache !== null) return $cache;
-    $file = dirname(__DIR__) . '/scene-identity.json';
+    $file = dirname(__DIR__) . '/data/scene-identity.json';
     if (!is_file($file)) return $cache = ['scenes' => [], 'places' => [], 'version' => ''];
     $raw = json_decode((string)@file_get_contents($file), true);
     if (!is_array($raw)) return $cache = ['scenes' => [], 'places' => [], 'version' => ''];
@@ -1189,7 +1291,7 @@ function ai_retrieve_v2(string $query, array $place, array $knowledge = [], int 
             if (($entry['type'] ?? '') === 'overview') { $scored[] = ['entry' => $entry, 'score' => 0.75, 'reason' => 'tour-knowledge']; break; }
         }
     }
-    usort($scored, static fn(array $a, array $b): int => $b['score'] <=> $a['score']);
+    usort($scored, static function (array $a, array $b): int { return $b['score'] <=> $a['score']; });
     return ['items' => array_slice($scored, 0, $limit), 'mode' => 'place-aware'];
 }
 
@@ -1220,6 +1322,20 @@ function ai_compose_reply(string $intent, string $reply, array $place, array $en
     ];
 }
 
+function ai_graceful_reply(string $intent, string $message, array $place, bool $isProximityQuery): array
+{
+    $placeName = (string)($place['currentPlaceName'] ?? '');
+    $where = $placeName !== '' ? $placeName : 'lokasi ini';
+    if ($isProximityQuery) {
+        $reply = 'Maaf, saat ini saya belum dapat menampilkan daftar tempat di sekitar ' . $where . '. Silakan tanyakan hal lain seputar lokasi ini, atau minta saya menuntun Bapak/Ibu ke titik menarik terdekat.';
+    } else {
+        $reply = 'Maaf, jawaban belum dapat saya susun saat ini. Bapak/Ibu dapat mengajukan pertanyaan lain atau meminta panduan menuju bagian tertentu dari lokasi ini.';
+    }
+    $result = ai_compose_reply($intent, $reply, $place);
+    $result['confidence'] = 0.4;
+    return $result;
+}
+
 function ai_resolve_destination(string $query, array $place, array $tour = []): ?array
 {
     // Navigation destinations are PLACES/SCENES (not knowledge entities). Scene-graph aware.
@@ -1232,13 +1348,13 @@ function ai_resolve_destination(string $query, array $place, array $tour = []): 
     foreach ($places as $p) {
         foreach ($p['variantGroup'] as $sceneId) {
             if ($sceneId !== $currentSceneId && in_array($sceneId, $tourScenes, true)) {
-                $names = array_merge([ai_normalize($p['placeDisplayName'])], array_map('ai_normalize', [$p['placeDisplayName'], $scenes[$sceneId]['rawName'] ?? '', $scenes[$sceneId]['displayName'] ?? '', ...($p['aliases'] ?? [])]));
+                $names = array_merge([ai_normalize($p['placeDisplayName'])], array_map('ai_normalize', [$p['placeDisplayName'], $scenes[$sceneId]['rawName'] ?? '', $scenes[$sceneId]['displayName'] ?? '']), array_map('ai_normalize', (array)($p['aliases'] ?? [])));
                 $score = 0.0;
                 foreach (array_values(array_unique(array_filter($names))) as $name) {
                     if ($name !== '' && str_contains($q, $name)) { $score = max($score, 1.0); break; }
                     // Partial match: check if any specific word from the name appears in query
                     $genericWords = ['area', 'gedung', 'ruang', 'koridor', 'lorong', 'pintu', 'jalan', 'taman', 'halaman'];
-                    $words = array_filter(explode(' ', $name), fn($w) => strlen($w) >= 4 && !in_array($w, $genericWords));
+                    $words = array_filter(explode(' ', $name), function ($w) use ($genericWords) { return strlen($w) >= 4 && !in_array($w, $genericWords); });
                     foreach ($words as $word) {
                         if (str_contains($q, $word)) { $score = max($score, 0.85); break 2; }
                     }
@@ -1248,7 +1364,7 @@ function ai_resolve_destination(string $query, array $place, array $tour = []): 
         }
     }
     if (!$candidates) return null;
-    usort($candidates, static fn(array $a, array $b): int => $b['score'] <=> $a['score']);
+    usort($candidates, static function (array $a, array $b): int { return $b['score'] <=> $a['score']; });
     $best = $candidates[0];
     return ['destinationPlaceId' => $best['placeId'], 'destinationPlaceName' => $best['placeName'], 'destinationSceneId' => $best['sceneId'], 'fromSceneId' => $currentSceneId, 'path' => ai_find_path(ai_graph($tour), $currentSceneId, $best['sceneId']), 'navigable' => true];
 }
@@ -1588,7 +1704,7 @@ function ai_search_public_services(string $query): array
         }
     }
 
-    usort($scored, fn($a, $b) => $b['score'] - $a['score']);
+    usort($scored, function ($a, $b) { return $b['score'] - $a['score']; });
     return array_slice($scored, 0, 6);
 }
 
@@ -1723,7 +1839,7 @@ function ai_resolve_public_service(string $message, array $session = []): ?array
             'reply' => $reply,
             'intent' => 'PUBLIC_SERVICE',
             'confidence' => 0.90,
-            'entities' => array_map(fn($s) => ['type' => 'public_service', 'id' => $s['id'], 'name' => $s['name']], $services),
+            'entities' => array_map(function ($s) { return ['type' => 'public_service', 'id' => $s['id'], 'name' => $s['name']]; }, $services),
             'needs_clarification' => true,
             'clarification_options' => $options,
             'actions' => [],

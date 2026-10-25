@@ -37,13 +37,13 @@ $_SERVER['CONTENT_TYPE'] = 'application/json';
 $_POST = [];
 
 // Include the actual logic
-require_once __DIR__ . '/api/ai-core.php';
-require_once __DIR__ . '/api/ai-provider.php';
-require_once __DIR__ . '/api/guide-policy.php';
+require_once __DIR__ . '/ai-core.php';
+require_once __DIR__ . '/ai-provider.php';
+require_once __DIR__ . '/guide-policy.php';
 
 // Load environment
 if (getenv('GEMINI_API_KEY') === false || getenv('GEMINI_API_KEY') === '') {
-    require_once __DIR__ . '/api/config.php';
+    require_once __DIR__ . '/config.php';
 }
 
 $message = trim((string)($input['message'] ?? ''));
@@ -130,7 +130,7 @@ if ($intent === 'PUBLIC_SERVICE') {
 
 // --- INTERNAL KNOWLEDGE FIRST ---
 $pipelineEvidence = $pipeline['result']['_retrieval'] ?? ['items' => [], 'mode' => 'place-aware'];
-$groundingEvidence = array_map(static fn(array $item): array => $item['entry'] + ['relevance' => $item['score']], $pipelineEvidence['items'] ?? []);
+$groundingEvidence = array_map(static function (array $item): array { return $item['entry'] + ['relevance' => $item['score']]; }, $pipelineEvidence['items'] ?? []);
 $facet = ai_classify_facet($message, $intent);
 
 $exploreEntity = $pipeline['result']['entities'][0] ?? null;
@@ -224,13 +224,20 @@ if ($aiData) {
             ];
         }
     } else {
-        $rawReply = trim($content);
-        if ($rawReply !== '' && mb_strlen($rawReply) > 10) {
-            $result = ai_compose_reply($intent, $rawReply, $place, $exploreEntity ? [$exploreEntity] : []);
+        // Validation failed — try to extract reply from parsed data, or use raw text
+        $fallbackReply = (string)($aiData['reply'] ?? $aiData['text'] ?? $aiData['answer'] ?? '');
+        if ($fallbackReply !== '' && mb_strlen($fallbackReply) > 10) {
+            $result = ai_compose_reply($intent, $fallbackReply, $place, $exploreEntity ? [$exploreEntity] : []);
             $result['provider'] = (string)($providerResult['provider'] ?? 'unknown') . '-raw';
         } else {
-            $result = $pipeline['result'];
-            $result['provider'] = 'v2-state-engine';
+            $rawReply = trim($content);
+            if ($rawReply !== '' && mb_strlen($rawReply) > 10) {
+                $result = ai_compose_reply($intent, $rawReply, $place, $exploreEntity ? [$exploreEntity] : []);
+                $result['provider'] = (string)($providerResult['provider'] ?? 'unknown') . '-raw';
+            } else {
+                $result = $pipeline['result'];
+                $result['provider'] = 'v2-state-engine';
+            }
         }
         $result['conversation_update'] = [
             'recommended_route_id' => $result['action'] === 'go_to_scene' ? null : ($session['recommendedRouteId'] ?? null),
@@ -239,13 +246,21 @@ if ($aiData) {
         ];
     }
 } else {
+    // Not JSON — use raw text directly
     $rawReply = trim($content);
     if ($rawReply !== '' && mb_strlen($rawReply) > 10) {
         $result = ai_compose_reply($intent, $rawReply, $place, $exploreEntity ? [$exploreEntity] : []);
         $result['provider'] = (string)($providerResult['provider'] ?? 'unknown') . '-raw';
     } else {
-        $result = $pipeline['result'];
-        $result['provider'] = 'v2-state-engine';
+        // Last resort: use pipeline result or generic fallback
+        $pipelineReply = (string)($pipeline['result']['reply'] ?? '');
+        if ($pipelineReply !== '') {
+            $result = $pipeline['result'];
+            $result['provider'] = 'v2-state-engine';
+        } else {
+            $result = ai_compose_reply($intent, 'Maaf, saya belum bisa menjawab pertanyaan tersebut. Coba tanyakan tentang sejarah, arsitektur, atau objek yang ada di Lawang Sewu.', $place, $exploreEntity ? [$exploreEntity] : []);
+            $result['provider'] = 'fallback-template';
+        }
     }
     $result['conversation_update'] = [
         'recommended_route_id' => $result['action'] === 'go_to_scene' ? null : ($session['recommendedRouteId'] ?? null),

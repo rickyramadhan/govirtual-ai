@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/ai-core.php';
 
-$js = (string) file_get_contents(dirname(__DIR__) . '/tour-data.js');
+$js = (string) file_get_contents(dirname(__DIR__) . '/data/tour-data.js');
 $json = trim((string) preg_replace('/^.*?\bwindow\.GoVirtualTourData\s*=\s*/s', '', $js));
 $json = (string) preg_replace('/;\s*$/s', '', $json);
 echo "JSON prefix: " . substr($json, 0, 100) . "\n";

@@ -53,8 +53,8 @@ function ai_build_guide_system_prompt(array $ctx): string
     $parts[] = 'KEABSAHAN FAKTA:';
     $parts[] = '- VERIFIED_FACTS adalah satu-satunya sumber fakta spesifik Lawang Sewu. Jangan ciptakan fakta baru.';
     $parts[] = '- Paraphrase konten yang ada, jangan salin mentah-mentah dari sumber.';
-    $parts[] = '- Jika fakta dinamis tidak tersedia (harga tiket, jam buka hari ini, cuaca, antrian), jujur: "Saya belum memiliki informasi terbaru mengenai hal tersebut." Lalu tawarkan bantuan lain.';
-    $parts[] = '- Jangan mengarang angka, harga, atau statistik.';
+    $parts[] = '- Untuk pertanyaan harga tiket, jam buka, dan akses Lawang Sewu: jawab dengan pengetahuan umum yang relevan dan masih dalam konteks Lawang Sewu/Semarang, tanpa menolak. Harga/jam bisa berubah, jadi sampaikan sebagai gambaran umum dan sarankan mengecek info resmi terbaru. JANGAN langsung menolak atau bilang "tidak tahu" sebelum berusaha menjawab.';
+    $parts[] = '- Jika benar-benar tidak ada informasi sama sekali dan bukan tentang Lawang Sewu, jujur dan sopan, lalu tawarkan bantuan lain. Jangan mengarang angka atau statistik yang belum pasti.';
     $parts[] = '';
     $parts[] = 'PENGETAHUAN UMUM:';
     $parts[] = '- Kamu boleh menggunakan pengetahuan umum untuk menjawab pertanyaan arsitektur, budaya, sejarah umum, geografi, bahasa, kuliner, atau konsep yang mapan.';
@@ -173,7 +173,13 @@ function ai_build_guide_system_prompt(array $ctx): string
     $parts[] = '';
 
     // --- Output format ---
-    $parts[] = 'OUTPUT: JSON valid tanpa markdown. Schema: {"reply":"...","intent":"...","confidence":0.0,"entities":[{"type":"facility|scene|route|service|entity","id":"...","name":"..."}],"conversation_update":{"recommended_route_id":null,"referenced_scene_id":null,"referenced_entity_id":null},"actions":[],"cards":[],"used_source_ids":[]}';
+    $parts[] = 'OUTPUT: JSON valid tanpa markdown. Schema: {"reply":"...","intent":"...","confidence":0.0,"entities":[{"type":"facility|scene|route|service|entity","id":"...","name":"..."}],"conversation_update":{"recommended_route_id":null,"referenced_scene_id":null,"referenced_entity_id":null},"actions":[],"cards":[],"used_source_ids":[],"recommendations":[]}';
+    $parts[] = '';
+    $parts[] = 'REKOMENDASI LOKASI (opsional):';
+    $parts[] = '- Saat pengunjung bertanya tentang tempat untuk menginap, tempat ibadah, kuliner, belanja, atau akomodasi/sejenisnya di sekitar Lawang Sewu/Semarang, sertakan field "recommendations" berisi array objek: {"name":"Nama Tempat","type":"hotel|masjid|gereja|restoran|cafe|mall|lainnya","lat":-6.98402,"lng":110.41079,"note":"satu kalimat singkat"}.';
+    $parts[] = '- Isi lat/lng dengan perkiraan koordinat yang wajar sesuai pengetahuan umum lokasi tersebut di Semarang. Jangan mengarang koordinat di luar Semarang.';
+    $parts[] = '- Tambahkan maksimal 3-5 rekomendasi yang relevan dengan jenis tempat yang ditanyakan.';
+    $parts[] = '- Tetap jawab dalam "reply" secara natural, dan daftar di "recommendations" sebagai pelengkap (bukan mengulang semua di reply).';
     $parts[] = '';
 
     // --- Allowed IDs ---
@@ -181,7 +187,7 @@ function ai_build_guide_system_prompt(array $ctx): string
         $parts[] = 'Allowed scene IDs: ' . json_encode($sceneIds, JSON_UNESCAPED_UNICODE);
     }
     if (!empty($routes)) {
-        $parts[] = 'Allowed routes: ' . json_encode(array_map(static fn(array $r): array => ['id' => $r['id'], 'name' => $r['name'], 'scenes' => $r['scenes']], $routes), JSON_UNESCAPED_UNICODE);
+        $parts[] = 'Allowed routes: ' . json_encode(array_map(static function (array $r): array { return ['id' => $r['id'], 'name' => $r['name'], 'scenes' => $r['scenes']]; }, $routes), JSON_UNESCAPED_UNICODE);
     }
 
     return implode("\n", $parts);
@@ -196,24 +202,38 @@ function ai_fallback_template(string $intent, array $place, array $tour): string
     $placeName = $place['currentPlaceName'] ?? '';
     $tourName  = $tour['name'] ?? 'Lawang Sewu';
 
-    return match ($intent) {
-        'CURRENT_LOCATION' => $placeName !== ''
-            ? "Saat ini Bapak/Ibu berada di area {$placeName}. {$tourName} memiliki banyak area menarik untuk dijelajahi. Ada yang ingin diketahui lebih lanjut?"
-            : "Bapak/Ibu sedang menjelajahi {$tourName}. Beri tahu saya area atau bangunan yang ingin diketahui.",
-        'PLACE_DESCRIPTION' => $placeName !== ''
-            ? "Saya belum memiliki deskripsi lengkap untuk {$placeName}, namun area ini merupakan bagian dari kompleks {$tourName}. Ada area lain yang ingin dijelajahi?"
-            : "Saya sedang mempelajari area ini lebih lanjut. Ada pertanyaan lain tentang {$tourName}?",
-        'ENTITY_DESCRIPTION' => 'Saya sedang mencari informasi terverifikasi tentang topik ini. Sementara itu, ada area menarik lain di Lawang Sewu yang bisa dijelajahi.',
-        'TOUR_DESCRIPTION' => "Lawang Sewu adalah salah satu ikon sejarah Kota Semarang. Kompleks bangunan ini memiliki banyak area menarik mulai dari galeri, monumen, hingga koridor bersejarah. Mau mulai dari mana?",
-        'FACTUAL_QUESTION' => 'Saya belum memiliki informasi spesifik mengenai hal tersebut yang terverifikasi saat ini. Namun saya bisa membantu menjelajahi area atau objek menarik di Lawang Sewu. Ada yang ingin diketahui?',
-        'NAVIGATION_REQUEST' => 'Tentu, saya bisa mengarahkan. Ke mana Bapak/Ibu ingin pergi?',
-        'FOLLOWUP_NAVIGATION' => 'Baik, saya akan mengarahkan ke tujuan sebelumnya.',
-        'ROUTE_RECOMMENDATION' => 'Lawang Sewu memiliki banyak rute menarik. Mau saya rekomendasikan jalur eksplorasi yang sesuai?',
-        'UNKNOWN_FACT' => 'Saya belum memiliki informasi terbaru mengenai hal tersebut, jadi saya tidak ingin memberikan data yang belum terverifikasi. Namun saya bisa membantu menjelajahi Lawang Sewu atau menceritakan objek menarik di tur ini.',
-        'GENERAL_CONVERSATION' => 'Saya siap membantu menjelajahi Lawang Sewu. Tanya tentang area, sejarah bangunan, objek menarik, atau minta rekomendasi jalur.',
-        'HIGHLIGHTS' => 'Lawang Sewu memiliki banyak bagian menarik. Ada yang spesifik ingin dijelajahi?',
-        'FACILITY' => 'Informasi fasilitas sedang saya pelajari lebih lanjut. Ada yang ingin diketahui tentang area sekitar?',
-        'NEARBY_SEARCH' => 'Saya bisa membantu mencari informasi sekitar Lawang Sewu di Semarang. Apa yang ingin dicari?',
-        default => 'Saya siap membantu menjelajahi Lawang Sewu. Ada yang ingin diketahui?',
-    };
+    switch ($intent) {
+        case 'CURRENT_LOCATION':
+            return $placeName !== ''
+                ? "Saat ini Bapak/Ibu berada di area {$placeName}. {$tourName} memiliki banyak area menarik untuk dijelajahi. Ada yang ingin diketahui lebih lanjut?"
+                : "Bapak/Ibu sedang menjelajahi {$tourName}. Beri tahu saya area atau bangunan yang ingin diketahui.";
+        case 'PLACE_DESCRIPTION':
+            return $placeName !== ''
+                ? "Saya belum memiliki deskripsi lengkap untuk {$placeName}, namun area ini merupakan bagian dari kompleks {$tourName}. Ada area lain yang ingin dijelajahi?"
+                : "Saya sedang mempelajari area ini lebih lanjut. Ada pertanyaan lain tentang {$tourName}?";
+        case 'ENTITY_DESCRIPTION':
+            return 'Saya sedang mencari informasi terverifikasi tentang topik ini. Sementara itu, ada area menarik lain di Lawang Sewu yang bisa dijelajahi.';
+        case 'TOUR_DESCRIPTION':
+            return "Lawang Sewu adalah salah satu ikon sejarah Kota Semarang. Kompleks bangunan ini memiliki banyak area menarik mulai dari galeri, monumen, hingga koridor bersejarah. Mau mulai dari mana?";
+        case 'FACTUAL_QUESTION':
+            return 'Saya belum memiliki informasi spesifik mengenai hal tersebut yang terverifikasi saat ini. Namun saya bisa membantu menjelajahi area atau objek menarik di Lawang Sewu. Ada yang ingin diketahui?';
+        case 'NAVIGATION_REQUEST':
+            return 'Tentu, saya bisa mengarahkan. Ke mana Bapak/Ibu ingin pergi?';
+        case 'FOLLOWUP_NAVIGATION':
+            return 'Baik, saya akan mengarahkan ke tujuan sebelumnya.';
+        case 'ROUTE_RECOMMENDATION':
+            return 'Lawang Sewu memiliki banyak rute menarik. Mau saya rekomendasikan jalur eksplorasi yang sesuai?';
+        case 'UNKNOWN_FACT':
+            return 'Saya belum memiliki informasi terbaru mengenai hal tersebut, jadi saya tidak ingin memberikan data yang belum terverifikasi. Namun saya bisa membantu menjelajahi Lawang Sewu atau menceritakan objek menarik di tur ini.';
+        case 'GENERAL_CONVERSATION':
+            return 'Saya siap membantu menjelajahi Lawang Sewu. Tanya tentang area, sejarah bangunan, objek menarik, atau minta rekomendasi jalur.';
+        case 'HIGHLIGHTS':
+            return 'Lawang Sewu memiliki banyak bagian menarik. Ada yang spesifik ingin dijelajahi?';
+        case 'FACILITY':
+            return 'Informasi fasilitas sedang saya pelajari lebih lanjut. Ada yang ingin diketahui tentang area sekitar?';
+        case 'NEARBY_SEARCH':
+            return 'Saya bisa membantu mencari informasi sekitar Lawang Sewu di Semarang. Apa yang ingin dicari?';
+        default:
+            return 'Saya siap membantu menjelajahi Lawang Sewu. Ada yang ingin diketahui?';
+    }
 }

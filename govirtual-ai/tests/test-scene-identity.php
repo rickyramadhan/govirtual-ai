@@ -30,7 +30,7 @@ $placeMap = json_decode((string)@file_get_contents($root . '/place-map.json'), t
 check('place-map.json parses', $placeMap !== null);
 if (!$placeMap) { fwrite(STDERR, "FATAL: place-map.json broken\n"); exit(1); }
 
-$tourJs = file_get_contents($root . '/tour-data.js');
+$tourJs = file_get_contents(dirname(__DIR__) . '/data/tour-data.js');
 check('tour-data.js readable', $tourJs !== false);
 if ($tourJs === false) { fwrite(STDERR, "FATAL: tour-data.js unreadable\n"); exit(1); }
 

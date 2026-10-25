@@ -13,7 +13,7 @@ putenv('OLLAMA_URL=http://127.0.0.1:1');
 putenv('AI_REASONING_MODE=fast');
 
 // Load tour data
-$js = (string) file_get_contents(__DIR__ . '/../tour-data.js');
+$js = (string) file_get_contents(dirname(__DIR__) . '/data/tour-data.js');
 $json = trim((string) preg_replace('/^.*?\bwindow\.GoVirtualTourData\s*=\s*/s', '', $js));
 $json = (string) preg_replace('/;\s*$/s', '', $json);
 $raw = json_decode($json, true);

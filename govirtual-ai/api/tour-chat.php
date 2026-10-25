@@ -35,7 +35,7 @@ if (!$tour['scenes']) { http_response_code(400); echo json_encode(['error' => 'm
 $sceneIds = array_column($tour['scenes'], 'id');
 $currentScene = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($input['currentScene'] ?? ''));
 if (!in_array($currentScene, $sceneIds, true)) $currentScene = $tour['scenes'][0]['id'];
-$history = array_values(array_filter(array_slice((array)($input['history'] ?? []), -AI_MAX_HISTORY), static fn($item): bool => is_array($item) && in_array($item['role'] ?? '', ['user', 'assistant'], true) && isset($item['text'])));
+$history = array_values(array_filter(array_slice((array)($input['history'] ?? []), -AI_MAX_HISTORY), static function ($item): bool { return is_array($item) && in_array($item['role'] ?? '', ['user', 'assistant'], true) && isset($item['text']); }));
 $session = is_array($input['conversationState'] ?? null) ? $input['conversationState'] : [];
 $session['lastSceneId'] = $currentScene;
 $session['visitorProfile'] = is_array($session['visitorProfile'] ?? null) ? $session['visitorProfile'] : [];
@@ -43,8 +43,8 @@ $session['history'] = $history;
 $view = is_array($input['viewContext'] ?? null) ? $input['viewContext'] : [];
 $view['visibleHotspots'] = array_slice((array)($view['visibleHotspots'] ?? []), 0, 8);
 $graph = ai_graph($tour);
-$scene = current(array_filter($tour['scenes'], static fn(array $item): bool => $item['id'] === $currentScene)) ?: $tour['scenes'][0];
-$nearby = array_values(array_filter($tour['hotspots'], static fn(array $hotspot): bool => $hotspot['scene'] === $currentScene));
+$scene = current(array_filter($tour['scenes'], static function (array $item) use ($currentScene): bool { return $item['id'] === $currentScene; })) ?: $tour['scenes'][0];
+$nearby = array_values(array_filter($tour['hotspots'], static function (array $hotspot) use ($currentScene): bool { return $hotspot['scene'] === $currentScene; }));
 
 /* ================================================================
  * V2 INTENT-FIRST PIPELINE
@@ -55,7 +55,7 @@ $standaloneQuery = ai_standalone_query($message, $session, $history);
 $retrievalStarted = microtime(true);
 $retrieval = ai_retrieve($standaloneQuery, $session, $tour, $config, $config['reasoning_mode'] === 'fast' ? 4 : 6);
 $retrievalMs = (int)((microtime(true) - $retrievalStarted) * 1000);
-$grounding = array_map(static fn(array $item): array => $item['entry'] + ['relevance' => $item['score']], $retrieval['items']);
+$grounding = array_map(static function (array $item): array { return $item['entry'] + ['relevance' => $item['score']]; }, $retrieval['items']);
 
 // Deterministic intents: answer locally, no provider needed.
 $deterministicIntents = ['CURRENT_LOCATION', 'NAVIGATION_REQUEST', 'FOLLOWUP_NAVIGATION', 'ROUTE_RECOMMENDATION'];
@@ -132,7 +132,7 @@ if ($intent === 'PUBLIC_SERVICE') {
 // Provider path: all description, knowledge, conversation intents go to LLM for natural language composition.
 // BUT first check if internal knowledge can answer deterministically.
 $pipelineEvidence = $pipeline['result']['_retrieval'] ?? $retrieval;
-$groundingEvidence = array_map(static fn(array $item): array => $item['entry'] + ['relevance' => $item['score']], $pipelineEvidence['items'] ?? $retrieval['items']);
+$groundingEvidence = array_map(static function (array $item): array { return $item['entry'] + ['relevance' => $item['score']]; }, $pipelineEvidence['items'] ?? $retrieval['items']);
 $facet = ai_classify_facet($message, $intent);
 
 // --- PROXIMITY QUERIES: skip internal knowledge, go straight to Gemini ---
@@ -374,8 +374,8 @@ if ($aiData) {
             $result = ai_compose_reply($intent, $rawReply, $place, $exploreEntity ? [$exploreEntity] : []);
             $result['provider'] = (string)($providerResult['provider'] ?? 'unknown') . '-raw';
         } else {
-            $result = $pipeline['result'];
-            $result['provider'] = 'v2-state-engine';
+            $result = ai_graceful_reply($intent, $message, $place, $isProximityQuery);
+            $result['provider'] = $isProximityQuery ? 'graceful-nearby' : 'graceful-fallback';
         }
         $result['conversation_update'] = [
             'recommended_route_id' => $result['action'] === 'go_to_scene' ? null : ($session['recommendedRouteId'] ?? null),
@@ -386,8 +386,8 @@ if ($aiData) {
 } elseif ($enrichedFallback && !$isProximityQuery) {
     $result = $enrichedFallback;
 } else {
-    $result = $pipeline['result'];
-    $result['provider'] = 'v2-state-engine';
+    $result = ai_graceful_reply($intent, $message, $place, $isProximityQuery);
+    $result['provider'] = $isProximityQuery ? 'graceful-nearby' : 'graceful-fallback';
     $result['conversation_update'] = [
         'recommended_route_id' => $result['action'] === 'go_to_scene' ? null : ($session['recommendedRouteId'] ?? null),
         'referenced_scene_id' => $result['scene'] ?? null,

@@ -16,7 +16,7 @@ putenv('AI_REASONING_MODE=fast');        // no embedding calls at all
 $config = ai_config();
 
 // Parse tour-data.js: window.GoVirtualTourData = { ... };  (JS wrapper, not bare JSON)
-$js = (string) file_get_contents(__DIR__ . '/../tour-data.js');
+$js = (string) file_get_contents(dirname(__DIR__) . '/data/tour-data.js');
 $json = trim((string) preg_replace('/^.*?\bwindow\.GoVirtualTourData\s*=\s*/s', '', $js));
 $json = (string) preg_replace('/;\s*$/s', '', $json);
 $raw = json_decode($json, true);

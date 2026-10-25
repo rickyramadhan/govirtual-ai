@@ -15,7 +15,7 @@ putenv('AI_REASONING_MODE=fast');
 $config = ai_config();
 
 // Load tour data from tour-data.js
-$js = (string) file_get_contents(__DIR__ . '/../tour-data.js');
+$js = (string) file_get_contents(dirname(__DIR__) . '/data/tour-data.js');
 $json = trim((string) preg_replace('/^.*?\bwindow\.GoVirtualTourData\s*=\s*/s', '', $js));
 $json = (string) preg_replace('/;\s*$/s', '', $json);
 $raw = json_decode($json, true);

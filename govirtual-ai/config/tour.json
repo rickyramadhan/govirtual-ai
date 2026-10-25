@@ -1,0 +1,17 @@
+{
+  "tourId": "lawang-sewu",
+  "tourName": "Lawang Sewu",
+  "language": "id",
+  "features": {
+    "exploreKnowledge": true,
+    "publicService": true,
+    "destinationDiscovery": true,
+    "semarangCatalog": true,
+    "sceneIdentity": true,
+    "answerability": true
+  },
+  "providers": {
+    "primary": "gemini",
+    "fallbacks": ["openrouter", "ollama"]
+  }
+}

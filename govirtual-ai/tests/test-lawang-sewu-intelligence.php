@@ -28,7 +28,7 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 
 // ---- Load tour data (JS) by extracting the JSON literal ----
-$tourJs = file_get_contents($root . '/tour-data.js');
+$tourJs = file_get_contents(dirname(__DIR__) . '/data/tour-data.js');
 if ($tourJs === false) { fwrite(STDERR, "FATAL: cannot read tour-data.js\n"); exit(1); }
 $tourData = extractTourData($tourJs);
 if (!$tourData || !isset($tourData['scenes']) || !isset($tourData['hotspots'])) { fwrite(STDERR, "FATAL: tour-data.js parse failed\n"); exit(1); }

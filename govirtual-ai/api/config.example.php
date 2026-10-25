@@ -15,6 +15,7 @@ $envPairs = [
     'AI_DEBUG' => 'false',
     'GEMINI_API_KEY' => '',
     'GEMINI_MODEL' => 'gemini-3.5-flash-lite',
+    'GEMINI_FALLBACK_MODELS' => 'gemini-2.5-flash-lite',
     'OPENROUTER_API_KEY' => '',
     'OPENROUTER_MODEL' => 'openai/gpt-4o-mini',
     'OPENROUTER_BASE_URL' => 'https://openrouter.ai/api/v1',

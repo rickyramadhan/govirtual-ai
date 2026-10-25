@@ -37,7 +37,7 @@ $graph = ai_graph($tour);
 
 // Load scene-identity data for graph exits from tour-data.js
 $sceneRegistry = [];
-$tourDataFile = dirname(__DIR__) . '/tour-data.js';
+$tourDataFile = dirname(__DIR__) . '/data/tour-data.js';
 $tourDataContent = (string)@file_get_contents($tourDataFile);
 // Extract hotspots from tour-data.js
 preg_match_all('/\{\s*scene:\s*\'(node\d+)\',\s*title:\s*\'([^\']*)\',\s*target:\s*\'(node\d+)\'/', $tourDataContent, $hotspotMatches);

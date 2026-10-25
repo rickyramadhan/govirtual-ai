@@ -41,14 +41,24 @@
 		<script type="text/javascript" src="skin.js">
 		</script>
 		<link rel="stylesheet" href="custom.css"/>
-		<link rel="stylesheet" href="tour-chat.css"/>
 		<link rel="stylesheet" href="3rdparty/leaflet/leaflet.css"/>
 		<script src="background_music_off.js"></script>
 		<script src="gyro.js"></script>
 		<script src="3rdparty/leaflet/leaflet.js"></script>
-			<script src="tour-data.js"></script>
-		<script src="ai-client.js"></script>
-		<script src="tour-chat.js"></script>
+		<script src="./govirtual-ai/data/tour-data.js"></script>
+		<!-- GOVIRTUAL AI START -->
+		<link rel="stylesheet" href="./govirtual-ai/frontend/guide.css">
+		<script>
+		window.GOVIRTUAL_AI_CONFIG = {
+		  basePath: "./govirtual-ai/",
+		  tourId: "lawang-sewu",
+		  tourName: "Lawang Sewu",
+		  uiMode: "immersive"
+		};
+		</script>
+		<script src="./govirtual-ai/ai-client.js"></script>
+		<script src="./govirtual-ai/frontend/guide.js"></script>
+		<!-- GOVIRTUAL AI END -->
 		<div id="container" style="width:100%;height:100%;overflow:hidden;">
 		<br>Loading...<br><br>
 		</div>

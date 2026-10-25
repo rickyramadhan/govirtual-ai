@@ -17,23 +17,38 @@ function ai_provider_config(): array
 
 function ai_provider_model(string $provider): string
 {
-    return match ($provider) {
-        'groq' => getenv('GROQ_MODEL') ?: 'llama-3.1-8b-instant',
-        'gemini' => getenv('GEMINI_MODEL') ?: 'gemini-3.5-flash-lite',
-        'openrouter' => getenv('OPENROUTER_MODEL') ?: 'openai/gpt-4o-mini',
-        'ollama' => getenv('OLLAMA_MODEL') ?: 'qwen2.5:7b',
-        default => '',
-    };
+    switch ($provider) {
+        case 'groq':
+            return getenv('GROQ_MODEL') ?: 'llama-3.1-8b-instant';
+        case 'gemini':
+            return getenv('GEMINI_MODEL') ?: 'gemini-3.5-flash-lite';
+        case 'openrouter':
+            return getenv('OPENROUTER_MODEL') ?: 'openai/gpt-4o-mini';
+        case 'ollama':
+            return getenv('OLLAMA_MODEL') ?: 'qwen2.5:7b';
+        default:
+            return '';
+    }
+}
+
+function ai_gemini_models(): array
+{
+    $primary = trim((string)(getenv('GEMINI_MODEL') ?: 'gemini-3.5-flash-lite'));
+    $fallbacks = array_values(array_filter(array_map('trim', explode(',', (string)(getenv('GEMINI_FALLBACK_MODELS') ?: '')))));
+    return array_values(array_unique(array_filter(array_merge([$primary], $fallbacks))));
 }
 
 function ai_provider_caps(string $provider): array
 {
-    return match ($provider) {
-        'groq', 'openrouter' => ['supportsStructuredOutput' => true, 'supportsJsonMode' => true],
-        'gemini' => ['supportsStructuredOutput' => true, 'supportsJsonMode' => true],
-        'ollama' => ['supportsStructuredOutput' => true, 'supportsJsonMode' => true],
-        default => ['supportsStructuredOutput' => false, 'supportsJsonMode' => false],
-    };
+    switch ($provider) {
+        case 'groq':
+        case 'openrouter':
+        case 'gemini':
+        case 'ollama':
+            return ['supportsStructuredOutput' => true, 'supportsJsonMode' => true];
+        default:
+            return ['supportsStructuredOutput' => false, 'supportsJsonMode' => false];
+    }
 }
 
 function ai_provider_state_file(): string
@@ -92,39 +107,44 @@ function ai_parse_provider_content(string $provider, array $result): array
     $decoded = json_decode($body, true);
     if (!is_array($decoded)) return ['success' => false, 'provider' => $provider, 'model' => '', 'content' => '', 'latency_ms' => 0, 'error' => 'invalid_json', 'raw' => $body, 'http_code' => (int)($result['code'] ?? 0)];
 
-    return match ($provider) {
-        'groq', 'openrouter' => [
-            'success' => isset($decoded['choices'][0]['message']['content']),
-            'provider' => $provider,
-            'model' => (string)($decoded['model'] ?? ''),
-            'content' => trim((string)($decoded['choices'][0]['message']['content'] ?? '')),
-            'latency_ms' => 0,
-            'error' => null,
-            'raw' => $decoded,
-            'http_code' => (int)($result['code'] ?? 0),
-        ],
-        'gemini' => [
-            'success' => isset($decoded['candidates'][0]['content']['parts'][0]['text']),
-            'provider' => $provider,
-            'model' => (string)($decoded['modelVersion'] ?? ''),
-            'content' => trim((string)($decoded['candidates'][0]['content']['parts'][0]['text'] ?? '')),
-            'latency_ms' => 0,
-            'error' => null,
-            'raw' => $decoded,
-            'http_code' => (int)($result['code'] ?? 0),
-        ],
-        'ollama' => [
-            'success' => isset($decoded['message']['content']) || isset($decoded['response']),
-            'provider' => $provider,
-            'model' => (string)($decoded['model'] ?? ''),
-            'content' => trim((string)($decoded['message']['content'] ?? $decoded['response'] ?? '')),
-            'latency_ms' => 0,
-            'error' => null,
-            'raw' => $decoded,
-            'http_code' => (int)($result['code'] ?? 0),
-        ],
-        default => ['success' => false, 'provider' => $provider, 'model' => '', 'content' => '', 'latency_ms' => 0, 'error' => 'unknown_provider', 'raw' => $decoded, 'http_code' => (int)($result['code'] ?? 0)],
-    };
+    switch ($provider) {
+        case 'groq':
+        case 'openrouter':
+            return [
+                'success' => isset($decoded['choices'][0]['message']['content']),
+                'provider' => $provider,
+                'model' => (string)($decoded['model'] ?? ''),
+                'content' => trim((string)($decoded['choices'][0]['message']['content'] ?? '')),
+                'latency_ms' => 0,
+                'error' => null,
+                'raw' => $decoded,
+                'http_code' => (int)($result['code'] ?? 0),
+            ];
+        case 'gemini':
+            return [
+                'success' => isset($decoded['candidates'][0]['content']['parts'][0]['text']),
+                'provider' => $provider,
+                'model' => (string)($decoded['modelVersion'] ?? ''),
+                'content' => trim((string)($decoded['candidates'][0]['content']['parts'][0]['text'] ?? '')),
+                'latency_ms' => 0,
+                'error' => null,
+                'raw' => $decoded,
+                'http_code' => (int)($result['code'] ?? 0),
+            ];
+        case 'ollama':
+            return [
+                'success' => isset($decoded['message']['content']) || isset($decoded['response']),
+                'provider' => $provider,
+                'model' => (string)($decoded['model'] ?? ''),
+                'content' => trim((string)($decoded['message']['content'] ?? $decoded['response'] ?? '')),
+                'latency_ms' => 0,
+                'error' => null,
+                'raw' => $decoded,
+                'http_code' => (int)($result['code'] ?? 0),
+            ];
+        default:
+            return ['success' => false, 'provider' => $provider, 'model' => '', 'content' => '', 'latency_ms' => 0, 'error' => 'unknown_provider', 'raw' => $decoded, 'http_code' => (int)($result['code'] ?? 0)];
+    }
 }
 
 function ai_provider_request(string $provider, array $messages, array $options): array
@@ -151,12 +171,19 @@ function ai_provider_request(string $provider, array $messages, array $options):
     if ($provider === 'gemini') {
         $key = getenv('GEMINI_API_KEY') ?: '';
         if ($key === '') return ['success' => false, 'provider' => $provider, 'model' => $model, 'content' => '', 'latency_ms' => (int)((microtime(true) - $started) * 1000), 'error' => 'missing_api_key', 'raw' => null, 'http_code' => 0];
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent?key=' . rawurlencode($key);
-        $payload = ['systemInstruction' => ['parts' => [['text' => (string)($options['system'] ?? '')]]], 'contents' => [[ 'role' => 'user', 'parts' => [['text' => (string)($options['user'] ?? '')]] ]], 'generationConfig' => ['temperature' => $temperature, 'responseMimeType' => $jsonMode ? 'application/json' : 'text/plain', 'maxOutputTokens' => $maxTokens]];
-        $result = ai_http_post_json($url, $payload, ['Content-Type: application/json'], $timeout);
-        $parsed = ai_parse_provider_content($provider, $result);
-        $parsed['latency_ms'] = (int)((microtime(true) - $started) * 1000);
-        return $parsed;
+        $models = (array)($options['models'] ?? ai_gemini_models());
+        $last = null;
+        foreach ($models as $model) {
+            $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent?key=' . rawurlencode($key);
+            $payload = ['systemInstruction' => ['parts' => [['text' => (string)($options['system'] ?? '')]]], 'contents' => [[ 'role' => 'user', 'parts' => [['text' => (string)($options['user'] ?? '')]] ]], 'generationConfig' => ['temperature' => $temperature, 'responseMimeType' => $jsonMode ? 'application/json' : 'text/plain', 'maxOutputTokens' => $maxTokens]];
+            $result = ai_http_post_json($url, $payload, ['Content-Type: application/json'], $timeout);
+            $parsed = ai_parse_provider_content($provider, $result);
+            $parsed['model'] = $model;
+            $parsed['latency_ms'] = (int)((microtime(true) - $started) * 1000);
+            if ($parsed['success']) return $parsed;
+            $last = $parsed;
+        }
+        return $last ?? ['success' => false, 'provider' => $provider, 'model' => $model, 'content' => '', 'latency_ms' => (int)((microtime(true) - $started) * 1000), 'error' => 'gemini_models_unavailable', 'raw' => null, 'http_code' => 0];
     }
 
     $base = $provider === 'groq' ? (getenv('GROQ_BASE_URL') ?: 'https://api.groq.com/openai/v1') : (getenv('OPENROUTER_BASE_URL') ?: 'https://openrouter.ai/api/v1');
@@ -207,12 +234,20 @@ function get_ai_provider_health(): array
     $providers = ['groq', 'gemini', 'openrouter', 'ollama'];
     $configured = [];
     foreach ($providers as $provider) {
-        $configured[$provider] = match ($provider) {
-            'groq' => (getenv('GROQ_API_KEY') ?: '') !== '',
-            'gemini' => (getenv('GEMINI_API_KEY') ?: '') !== '',
-            'openrouter' => (getenv('OPENROUTER_API_KEY') ?: '') !== '',
-            'ollama' => filter_var(getenv('OLLAMA_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN),
-        };
+        switch ($provider) {
+            case 'groq':
+                $configured[$provider] = (getenv('GROQ_API_KEY') ?: '') !== '';
+                break;
+            case 'gemini':
+                $configured[$provider] = (getenv('GEMINI_API_KEY') ?: '') !== '';
+                break;
+            case 'openrouter':
+                $configured[$provider] = (getenv('OPENROUTER_API_KEY') ?: '') !== '';
+                break;
+            case 'ollama':
+                $configured[$provider] = filter_var(getenv('OLLAMA_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+                break;
+        }
     }
     $state = ai_provider_state();
     $health = [];

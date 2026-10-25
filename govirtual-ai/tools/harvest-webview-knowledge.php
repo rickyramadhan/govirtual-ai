@@ -26,7 +26,7 @@ declare(strict_types=1);
 
 const LS_ROOT             = __DIR__ . '/..';
 const LS_SKIN_FILE        = LS_ROOT . '/skin.js';
-const LS_TOUR_DATA_FILE   = LS_ROOT . '/tour-data.js';
+const LS_TOUR_DATA_FILE   = LS_ROOT . '/data/tour-data.js';
 const LS_KNOWLEDGE_OUT    = LS_ROOT . '/knowledge.json';
 const LS_KNOWLEDGE_SPEC   = LS_ROOT . '/api/knowledge.json';
 const LS_WEBVIEW_MAP_OUT  = LS_ROOT . '/api/cache/ai/webview-map.json';
